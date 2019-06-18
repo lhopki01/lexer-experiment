@@ -28,6 +28,9 @@ func main() {
 	p := parser.NewParser(l)
 
 	ast := p.Parse()
+	for s := range ast {
+		fmt.Println(s)
+	}
 	js, _ := json.MarshalIndent(ast, "", "    ")
 	fmt.Println(string(js))
 }

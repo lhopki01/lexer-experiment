@@ -18,13 +18,14 @@ func NewParser(l *lexer.Lexer) *Parser {
 
 func (p *Parser) Parse() ast.Json {
 	tok := p.Lexer.NewToken()
+	fmt.Println(tok.String())
 	switch tok.Type {
 	case token.STRING:
 		return &ast.String{string(tok.Lit)}
 	case token.INTEGER:
 		return &ast.Integer{string(tok.Lit)}
 	case token.LBRACE:
-		return parseObject(p)
+		return parseNewlineObject(p)
 	case token.LBRACKET:
 		//return parseArray(p)
 		return parseArrayOrObject(p)
@@ -61,19 +62,51 @@ func parseArrayOrObject(p *Parser) ast.Json {
 		for {
 			key := string(p.Lexer.NewToken().Lit)
 			tok = p.Lexer.NewToken() // ':'
-			if !(tok.Type == token.COLON || tok.Type == token.EQUAL) {
-				panic(fmt.Sprintf("was expecting ':' or '=' got %s", string(tok.Lit)))
+			if tok.Type != token.COLON {
+				panic(fmt.Sprintf("was expecting ':' got %s", string(tok.Lit)))
 			}
 			object[key] = p.Parse()
 			tok = p.Lexer.NewToken() // ','
 
 			if tok.Type == token.RBRACKET {
 				return &ast.Object{object}
-				break
+			}
+
+			peakTok := p.Lexer.PeakToken()
+			if peakTok.Type == token.RBRACKET {
+				p.Lexer.NewToken()
+				return &ast.Object{object}
 			}
 
 			if tok.Type != token.COMMA {
 				panic(fmt.Sprintf("was expecting ',' got %s", string(tok.Lit)))
+			}
+		}
+	}
+
+	return &ast.Array{array}
+}
+func parseNewlineObject(p *Parser) ast.Json {
+	array := []ast.Json{}
+	object := map[string]ast.Json{}
+
+	tok := p.Lexer.PeakToken()
+
+	if tok.Type == token.RBRACE {
+		return &ast.Array{array}
+	} else {
+		fmt.Println("===newlineobject===")
+		for {
+			key := string(p.Lexer.NewToken().Lit)
+			tok = p.Lexer.NewToken() // ':'
+			if tok.Type != token.EQUAL {
+				panic(fmt.Sprintf("was expecting '=' got %s", string(tok.Lit)))
+			}
+			object[key] = p.Parse()
+			tok = p.Lexer.PeakToken() // ','
+
+			if tok.Type == token.RBRACE {
+				return &ast.Object{object}
 			}
 		}
 	}

@@ -1,6 +1,7 @@
 package lexer
 
 import (
+	"fmt"
 	"unicode"
 
 	"github.com/lhopki01/lexer-experiment/token"
@@ -32,6 +33,7 @@ func (l *Lexer) readChar() {
 func (l *Lexer) NewToken() token.Token {
 	var tok token.Token
 	skipWhitespace(l)
+	fmt.Println("first")
 
 	switch l.char {
 	case ':':
@@ -62,12 +64,13 @@ func (l *Lexer) NewToken() token.Token {
 		}
 	}
 
+	fmt.Println(tok.String())
 	l.readChar()
-	println(tok.String())
 	return tok
 }
 
 func (l *Lexer) PeakToken() token.Token {
+	fmt.Print("Peak: ")
 	start := l.start
 	end := l.end
 	tok := l.NewToken()
@@ -79,6 +82,7 @@ func (l *Lexer) PeakToken() token.Token {
 }
 
 func (l *Lexer) PeakSecondToken() token.Token {
+	fmt.Print("PeakSecond: ")
 	start := l.start
 	end := l.end
 	l.NewToken()
@@ -106,6 +110,7 @@ func isInteger(l *Lexer) bool {
 }
 
 func isString(l *Lexer) bool {
+	fmt.Println("in isString")
 	if l.char == '"' {
 		for l.end < len(l.input) {
 			l.end += 1
@@ -130,7 +135,7 @@ func isString(l *Lexer) bool {
 			}
 		}
 	}
-	if !(l.char < 'a' || l.char > 'z') && (l.char < 'A' || l.char > 'Z') {
+	if !(l.char < 'a' || l.char > 'z') || !(l.char < 'A' || l.char > 'Z') {
 		for l.end < len(l.input) {
 			l.end += 1
 			l.char = l.input[l.end]
@@ -142,6 +147,7 @@ func isString(l *Lexer) bool {
 			}
 		}
 	}
+	fmt.Println("at end")
 
 	return false
 }

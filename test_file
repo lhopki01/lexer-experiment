@@ -1,13 +1,13 @@
-[
+{
 	"first": [
 		'one' = "alpha",
 		two = "beta",
 		three='charlie',
 		four= "delta",
 		five: "echo"
-	],
+	]
 	"second": [
 		"list1",
 		"list2"
 	]
-]
+}

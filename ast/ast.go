@@ -6,11 +6,11 @@ type Json interface {
 }
 
 type Array struct {
-	Values []Json
+	Array []Json
 }
 
 type Object struct {
-	Properties map[string]Json
+	Object map[string]Json
 }
 
 type String struct {
