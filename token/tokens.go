@@ -25,6 +25,9 @@ const (
 	STRING   = "STRING"
 	INTEGER  = "INTEGER"
 	NEWLINE  = "NEWLINE"
+	LIBRARY  = "LIBRARY"
+	PLUS     = "PLUS"
+	LTHAN    = "LTHAN"
 )
 
 func NewToken(typ Type, lit string) Token {

@@ -1,0 +1,23 @@
+@Library(value="service-builder-shared-library@master", changelog=false) _
+import com.karhoo.Constants
+
+CICD {
+  containerImages = [
+    builder: [
+      name: "envy",
+      tag: "edge",
+    ]
+  ]
+  helmCharts = []
+  makeTargets = [
+    "lint",
+    "validate-charts",
+    "validate-conf-files",
+  ]
+
+  stepConfig = Constants.NO_DOCKER_IMAGE_NO_SCRATCH_ENV_NO_API_TESTS
+
+  master = [
+    stepConfig: Constants.DEFAULT_STEPS
+  ]
+}

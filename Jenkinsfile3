@@ -1,0 +1,23 @@
+@Library(value="service-builder-shared-library@master", changelog=false) _
+import com.karhoo.Constants
+
+CICD {
+  containerImages = [:]
+  containerImages["builder"] = [name: "karhoo-base", tag: "latest"]
+  helmCharts = ["infrastructure-openresty"]
+  makeTargets = ['test']
+  pr = [
+    stepConfig: Constants.NO_SCRATCH_ENV_NO_API_TESTS
+  ]
+  master = [
+    stepConfig: Constants.NO_SCRATCH_ENV_NO_API_TESTS + [
+      deployToStaging: true,
+      deployToSandbox: true,
+      deployToProduction: true,
+      tagDockerImageStaging: true,
+      tagDockerImageProduction: true,
+      tagDockerImageSandbox: true,
+      createGithubRelease: true,
+    ]
+  ]
+}

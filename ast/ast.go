@@ -1,5 +1,17 @@
 package ast
 
+type JenkinsFile struct {
+	Library  string
+	Imports  []string
+	Function string
+	Values   map[string]interface{}
+}
+
+type ConcatenatedItem struct {
+	Primary interface{}
+	Append  interface{}
+}
+
 // base json Node
 type Json interface {
 	TokenLiteral()

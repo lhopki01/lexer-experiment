@@ -33,7 +33,6 @@ func (l *Lexer) readChar() {
 func (l *Lexer) NewToken() token.Token {
 	var tok token.Token
 	skipWhitespace(l)
-	fmt.Println("first")
 
 	switch l.char {
 	case ':':
@@ -52,8 +51,14 @@ func (l *Lexer) NewToken() token.Token {
 		tok = token.NewToken(token.RBRACKET, string(l.char))
 	case '\n':
 		tok = token.NewToken(token.NEWLINE, string(l.char))
+	case '+':
+		tok = token.NewToken(token.PLUS, string(l.char))
+	case '<':
+		tok = token.NewToken(token.LTHAN, string(l.char))
 	default:
-		if isString(l) {
+		if isLibrary(l) {
+			tok = token.NewToken(token.LIBRARY, string(l.input[l.start:l.end]))
+		} else if isString(l) {
 			tok = token.NewToken(token.STRING, string(l.input[l.start:l.end]))
 		} else if isInteger(l) {
 			tok = token.NewToken(token.INTEGER, string(l.input[l.start:l.end]))
@@ -109,6 +114,21 @@ func isInteger(l *Lexer) bool {
 	return true
 }
 
+func isLibrary(l *Lexer) bool {
+	if l.char == '@' {
+		for l.end < len(l.input) {
+			l.end += 1
+			l.char = l.input[l.end]
+
+			if l.input[l.end] == '\n' {
+				l.char = l.input[l.end]
+				return true
+			}
+		}
+	}
+	return false
+}
+
 func isString(l *Lexer) bool {
 	fmt.Println("in isString")
 	if l.char == '"' {
@@ -135,19 +155,20 @@ func isString(l *Lexer) bool {
 			}
 		}
 	}
-	if !(l.char < 'a' || l.char > 'z') || !(l.char < 'A' || l.char > 'Z') {
+	if !(l.char < 'a' || l.char > 'z') || !(l.char < 'A' || l.char > 'Z') || l.char == '.' {
 		for l.end < len(l.input) {
 			l.end += 1
 			l.char = l.input[l.end]
 
-			if isWhitespace(l.input[l.end]) || l.input[l.end] == ':' || l.input[l.end] == '=' {
+			c := l.input[l.end]
+			if isWhitespace(c) || c == ':' || c == '=' || c == ',' {
 				//l.end += 1
 				l.char = l.input[l.end]
 				return true
 			}
 		}
 	}
-	fmt.Println("at end")
+	fmt.Println("at the end")
 
 	return false
 }
