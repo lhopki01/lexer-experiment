@@ -85,7 +85,7 @@ func parseArrayOrObject(p *Parser) interface{} {
 			peakTok := p.Lexer.PeakToken()
 			if peakTok.Type == token.RBRACKET {
 				p.Lexer.NewToken()
-				return object
+				return array
 			}
 
 			if tok.Type != token.COMMA {

@@ -1,15 +1,15 @@
 package main
 
 import (
-	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 	"reflect"
+	"regexp"
+	"sort"
 	"strings"
 
-	"github.com/davecgh/go-spew/spew"
 	"github.com/lhopki01/lexer-experiment/ast"
 	"github.com/lhopki01/lexer-experiment/lexer"
 	"github.com/lhopki01/lexer-experiment/parser"
@@ -32,23 +32,13 @@ func main() {
 	p := parser.NewParser(l)
 
 	jenkinsFile := p.ParseJenkinsFile()
-	fmt.Println("==============")
-	fmt.Println(jenkinsFile.Library)
-	fmt.Println(jenkinsFile.Function)
-	fmt.Println(jenkinsFile.Imports)
-	spew.Dump(jenkinsFile)
+	convertContainerImages(&jenkinsFile)
 
-	js, _ := json.MarshalIndent(jenkinsFile, "", "    ")
-	fmt.Println(string(js))
-	fmt.Println(reflect.TypeOf(jenkinsFile.Library))
-	fmt.Println(reflect.TypeOf(jenkinsFile.Values))
-	makeTargets := jenkinsFile.Values["makeTargets"]
-	fmt.Println(reflect.TypeOf(makeTargets))
-	for _, target := range makeTargets.([]interface{}) {
-		t := strings.TrimSuffix(strings.TrimPrefix(target.(string), "\""), "\"")
-		fmt.Printf("%s ==> make %s\n", t, t)
+	convertMakeTargets(&jenkinsFile)
+	convertNpmRunTargets(&jenkinsFile)
+	convertRakeTargets(&jenkinsFile)
 
-	}
+	convertMoveToAll(&jenkinsFile)
 
 	fmt.Println(jenkinsFile.Library)
 	for _, i := range jenkinsFile.Imports {
@@ -56,41 +46,184 @@ func main() {
 	}
 	fmt.Println("")
 	fmt.Printf("%s ", jenkinsFile.Function)
-	printBody("  ", "{", "}", "=", jenkinsFile.Values)
-	//for target := range jenkinsFile.Values["makeTargets"] {
-	//	spew.Dump(target)
-	//}
-	//makeTargets := jenkinsFile.Values["makeTargets"].([]string)
-	//for target := range makeTargets {
-	//	fmt.Printf("%s ==> make %s", target, target)
-	//}
+	reg := regexp.MustCompile(`\[\s*\]`)
+	fmt.Print(reg.ReplaceAllString(
+		printBody("  ", "{", "}", "=", jenkinsFile.Values),
+		"[]",
+	))
 }
 
-func printBody(indent string, lbracket string, rbracket string, assignment string, object interface{}) {
+func convertContainerImages(jf *ast.JenkinsFile) {
+	images := map[string]interface{}{}
+	re := regexp.MustCompile(`containerImages\[(.*)\]`)
+	for k, v := range jf.Values {
+		matches := re.FindStringSubmatch(k)
+		if matches != nil {
+			//images[matches[1]] = v
+			vm := v.(map[string]interface{})
+			if val, ok := vm["uri"]; ok {
+				images[matches[1]] = val
+			} else {
+				images[matches[1]] = fmt.Sprintf(
+					"eu.gcr.io/karhoo-common/%s:%s",
+					stripQuotes(vm["name"].(string)),
+					stripQuotes(vm["tag"].(string)),
+				)
+			}
+
+			delete(jf.Values, k)
+		}
+	}
+	if len(images) > 0 {
+		jf.Values["containerImages"] = images
+	}
+}
+
+func convertMoveToAll(jf *ast.JenkinsFile) {
+	allValues := map[string]interface{}{}
+	for k, v := range jf.Values {
+		if k != "pr" && k != "master" && k != "promoteToProd" {
+			allValues[k] = v
+			delete(jf.Values, k)
+		}
+	}
+	if len(allValues) > 0 {
+		jf.Values["all"] = allValues
+	}
+}
+
+func convertMakeTargets(jf *ast.JenkinsFile) {
+	scriptTargets := []interface{}{}
+
+	if val, ok := jf.Values["scriptTargets"]; ok {
+		scriptTargets = append(scriptTargets, val.([]interface{})...)
+	}
+
+	if val, ok := jf.Values["makeTargets"]; ok {
+		for _, target := range val.([]interface{}) {
+			scriptTargets = append(scriptTargets, fmt.Sprintf(
+				`'make %s'`,
+				stripQuotes(target.(string)),
+			))
+		}
+	}
+
+	jf.Values["scriptTargets"] = scriptTargets
+
+	delete(jf.Values, "makeTargets")
+}
+
+func convertRakeTargets(jf *ast.JenkinsFile) {
+	scriptTargets := []interface{}{}
+
+	if val, ok := jf.Values["scriptTargets"]; ok {
+		scriptTargets = append(scriptTargets, val.([]interface{})...)
+	}
+
+	if val, ok := jf.Values["rakeTargets"]; ok {
+		for _, target := range val.([]interface{}) {
+			scriptTargets = append(scriptTargets, fmt.Sprintf(
+				`'rake %s'`,
+				stripQuotes(target.(string)),
+			))
+		}
+	}
+
+	jf.Values["scriptTargets"] = scriptTargets
+
+	delete(jf.Values, "rakeTargets")
+}
+
+func convertNpmRunTargets(jf *ast.JenkinsFile) {
+	scriptTargets := []interface{}{}
+
+	if val, ok := jf.Values["scriptTargets"]; ok {
+		scriptTargets = append(scriptTargets, val.([]interface{})...)
+	}
+
+	if val, ok := jf.Values["npmRunTargets"]; ok {
+		for _, target := range val.([]interface{}) {
+			scriptTargets = append(scriptTargets, fmt.Sprintf(
+				`'npm run %s'`,
+				stripQuotes(target.(string)),
+			))
+		}
+	}
+
+	jf.Values["scriptTargets"] = scriptTargets
+
+	delete(jf.Values, "npmRunTargets")
+}
+
+func stripQuotes(s string) string {
+	start := string([]rune(s)[0])
+	if start == `"` {
+		s = strings.TrimPrefix(s, `"`)
+		s = strings.TrimSuffix(s, `"`)
+	} else if start == `'` {
+		s = strings.TrimPrefix(s, `'`)
+		s = strings.TrimSuffix(s, `'`)
+	}
+	return s
+
+}
+
+func printBody(indent string, lbracket string, rbracket string, assignment string, object interface{}) string {
 	switch vt := object.(type) {
 	case ast.ConcatenatedItem:
-		//fmt.Println("========")
-		//fmt.Println(reflect.TypeOf(vt))
-		//fmt.Println("========")
-		fmt.Printf("%v << ", vt.Primary)
-		printBody("  "+indent, "[", "]", ":", vt.Append)
+		//fmt.Sprintf("========")
+		//fmt.Sprintf(reflect.TypeOf(vt))
+		//fmt.Sprintf("========")
+		return fmt.Sprintf("%v << %s", vt.Primary, printBody(""+indent, "[", "]", ":", vt.Append))
 	case []interface{}:
-		fmt.Println(lbracket)
-		for _, s := range vt {
-			fmt.Printf("%s%v,\n", indent, s)
+		s := ""
+		s = s + fmt.Sprintf("%s\n", lbracket)
+		for _, str := range vt {
+			s = s + fmt.Sprintf(
+				"%s%s,\n",
+				indent,
+				printBody("  "+indent, "[", "]", ":", str),
+			)
 		}
-		fmt.Printf("%s%s\n", strings.TrimPrefix(indent, "  "), rbracket)
+		s = s + fmt.Sprintf("%s%s", strings.TrimPrefix(indent, "  "), rbracket)
+		return s
 	case map[string]interface{}:
-		fmt.Println(lbracket)
-		for k, v := range vt {
-			fmt.Printf("%s%s %s ", indent, k, assignment)
-			printBody("  "+indent, "[", "]", ":", v)
+		s := ""
+		delimiter := "\n\n"
+		if lbracket == "[" {
+			delimiter = ",\n"
 		}
-		fmt.Printf("%s%s\n", strings.TrimPrefix(indent, "  "), rbracket)
+		if assignment == "=" {
+			assignment = " ="
+		}
+		s = s + fmt.Sprintf("%s\n", lbracket)
+
+		keys := make([]string, 0, len(vt))
+		for key := range vt {
+			keys = append(keys, key)
+		}
+		sort.Strings(keys)
+
+		for _, v := range keys {
+			s = s + fmt.Sprintf(
+				"%s%s%s %s%s",
+				indent,
+				stripQuotes(v),
+				assignment,
+				printBody("  "+indent, "[", "]", ":", vt[v]),
+				delimiter,
+			)
+		}
+		s = s + fmt.Sprintf("%s%s", strings.TrimPrefix(indent, "  "), rbracket)
+		return s
 	case string:
-		fmt.Printf("%s\n", vt)
+		if strings.Contains(vt, "Constants") {
+			return fmt.Sprintf("%s", vt)
+		} else {
+			return fmt.Sprintf("'%s'", stripQuotes(vt))
+		}
 	default:
-		fmt.Println(reflect.TypeOf(vt))
+		return fmt.Sprintf("%s", reflect.TypeOf(vt))
 	}
-	//fmt.Printf("  %s = %v\n", key, value)
+	//fmt.Sprintf("  %s = %v\n", key, value)
 }

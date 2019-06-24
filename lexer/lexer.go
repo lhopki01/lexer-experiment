@@ -32,7 +32,7 @@ func (l *Lexer) readChar() {
 
 func (l *Lexer) NewToken() token.Token {
 	var tok token.Token
-	skipWhitespace(l)
+	skipWhitespaceAndComment(l)
 
 	switch l.char {
 	case ':':
@@ -182,13 +182,30 @@ func isWhitespace(r rune) bool {
 	}
 }
 
-func skipWhitespace(l *Lexer) {
+func skipWhitespaceAndComment(l *Lexer) {
 	for {
 		switch l.char {
 		case ' ', '\n', '\t', '\r':
 			l.readChar()
+		case '/':
+			l.readChar()
+			skipComment(l)
 		default:
 			return
 		}
+	}
+}
+
+func skipComment(l *Lexer) {
+	if l.char == '/' {
+		for {
+			switch l.char {
+			case '\n':
+				return
+			default:
+				l.readChar()
+			}
+		}
+
 	}
 }
