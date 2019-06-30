@@ -9,10 +9,14 @@ CICD {
   apiTestsToRun = ["v1-bookings-follow-code", "v2-payments"]
   scratchConf = "scratch-backendCICD.yaml"
   makeTargets = ["deps", "test", "dbtest", "lint", "coveralls", "build"]
+  // comment
   envVars = [
     'GO111MODULE': 'on',
     'GOPROXY': 'http://athens',
   ]
+  /* multiline
+  comment
+  */
   vaultEnvVars = [
     [key: "BRAINTREE_PRIVATE_KEY", path: "kubernetes/scratch/_all/common", field: "braintree-private-key"]
   ]

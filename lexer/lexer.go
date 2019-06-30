@@ -2,6 +2,7 @@ package lexer
 
 import (
 	"fmt"
+	"strings"
 	"unicode"
 
 	"github.com/lhopki01/lexer-experiment/token"
@@ -56,7 +57,9 @@ func (l *Lexer) NewToken() token.Token {
 	case '<':
 		tok = token.NewToken(token.LTHAN, string(l.char))
 	default:
-		if isLibrary(l) {
+		if isBool(l) {
+			tok = token.NewToken(token.BOOLEAN, string(l.input[l.start:l.end]))
+		} else if isLibrary(l) {
 			tok = token.NewToken(token.LIBRARY, string(l.input[l.start:l.end]))
 		} else if isString(l) {
 			tok = token.NewToken(token.STRING, string(l.input[l.start:l.end]))
@@ -99,6 +102,26 @@ func (l *Lexer) PeakSecondToken() token.Token {
 	return tok
 }
 
+func isBool(l *Lexer) bool {
+	start := l.start
+	end := l.end
+
+	l.end += 3
+	fmt.Println(strings.ToLower(string(l.input[l.start:l.end])))
+	if strings.ToLower(string(l.input[l.start:l.end])) == "true" {
+		return true
+	}
+	l.end += 1
+	fmt.Println(strings.ToLower(string(l.input[l.start:l.end])))
+	if strings.ToLower(string(l.input[l.start:l.end])) == "false" {
+		return true
+	}
+
+	l.start = start
+	l.end = end
+	return false
+}
+
 func isInteger(l *Lexer) bool {
 	if !unicode.IsDigit(l.char) && string(l.char) != "-" {
 		return false
@@ -136,7 +159,7 @@ func isString(l *Lexer) bool {
 			l.end += 1
 			l.char = l.input[l.end]
 
-			if l.input[l.end] == '"' {
+			if l.input[l.end] == '"' && l.input[l.end-1] != '\\' {
 				l.end += 1
 				l.char = l.input[l.end]
 				return true
@@ -148,7 +171,7 @@ func isString(l *Lexer) bool {
 			l.end += 1
 			l.char = l.input[l.end]
 
-			if l.input[l.end] == '\'' {
+			if l.input[l.end] == '\'' && l.input[l.end-1] != '\\' {
 				l.end += 1
 				l.char = l.input[l.end]
 				return true
@@ -206,6 +229,18 @@ func skipComment(l *Lexer) {
 				l.readChar()
 			}
 		}
-
+	}
+	if l.char == '*' {
+		for {
+			switch l.char {
+			case '*':
+				l.readChar()
+				if l.char == '/' {
+					return
+				}
+			default:
+				l.readChar()
+			}
+		}
 	}
 }

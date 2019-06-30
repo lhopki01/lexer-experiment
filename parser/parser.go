@@ -2,6 +2,7 @@ package parser
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/lhopki01/lexer-experiment/ast"
 	"github.com/lhopki01/lexer-experiment/lexer"
@@ -52,6 +53,12 @@ func (p *Parser) Parse() interface{} {
 		return string(tok.Lit)
 	case token.INTEGER:
 		return string(tok.Lit)
+	case token.BOOLEAN:
+		if strings.ToLower(string(tok.Lit)) == "true" {
+			return true
+		} else {
+			return false
+		}
 	case token.LBRACE:
 		return parseNewlineObject(p)
 	case token.LBRACKET:

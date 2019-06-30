@@ -28,6 +28,7 @@ const (
 	LIBRARY  = "LIBRARY"
 	PLUS     = "PLUS"
 	LTHAN    = "LTHAN"
+	BOOLEAN  = "BOOLEAN"
 )
 
 func NewToken(typ Type, lit string) Token {

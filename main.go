@@ -32,6 +32,7 @@ func main() {
 	p := parser.NewParser(l)
 
 	jenkinsFile := p.ParseJenkinsFile()
+
 	convertContainerImages(&jenkinsFile)
 
 	convertMakeTargets(&jenkinsFile)
@@ -39,6 +40,12 @@ func main() {
 	convertRakeTargets(&jenkinsFile)
 
 	convertMoveToAll(&jenkinsFile)
+
+	convertStepConfig(&jenkinsFile, "pr", "Constants.PR_VALIDATION_STEPS")
+	convertStepConfig(&jenkinsFile, "promoteToProduction", "Constants.PROMOTION_JOB_STEPS")
+	convertStepConfig(&jenkinsFile, "master", "Constants.MASTER_BRANCH_STEPS")
+
+	delete(jenkinsFile.Values["all"].(map[string]interface{}), "stepConfig")
 
 	fmt.Println(jenkinsFile.Library)
 	for _, i := range jenkinsFile.Imports {
@@ -53,6 +60,32 @@ func main() {
 	))
 }
 
+func convertStepConfig(js *ast.JenkinsFile, key string, constant string) {
+	all := js.Values["all"].(map[string]interface{})
+	allStepConfig, ok := all["stepConfig"]
+
+	stepConfig := ast.ConcatenatedItem{
+		Primary: constant,
+	}
+	v, exists := js.Values[key]
+	if exists {
+		if innerStepConfig, innerExists := v.(map[string]interface{})["stepConfig"]; innerExists {
+			stepConfig.Append = innerStepConfig
+		} else if ok {
+			stepConfig.Append = allStepConfig
+		}
+		js.Values[key].(map[string]interface{})["stepConfig"] = stepConfig
+	} else {
+		if ok {
+			stepConfig.Append = allStepConfig.(string)
+		}
+		js.Values[key] = map[string]interface{}{
+
+			"stepConfig": stepConfig,
+		}
+	}
+}
+
 func convertContainerImages(jf *ast.JenkinsFile) {
 	images := map[string]interface{}{}
 	re := regexp.MustCompile(`containerImages\[(.*)\]`)
@@ -62,7 +95,13 @@ func convertContainerImages(jf *ast.JenkinsFile) {
 			//images[matches[1]] = v
 			vm := v.(map[string]interface{})
 			if val, ok := vm["uri"]; ok {
-				images[matches[1]] = val
+				_, nameOk := vm["name"]
+				_, tagOk := vm["tag"]
+				if nameOk || tagOk {
+					panic("Can't have name or tag with uri")
+				} else {
+					images[matches[1]] = val
+				}
 			} else {
 				images[matches[1]] = fmt.Sprintf(
 					"eu.gcr.io/karhoo-common/%s:%s",
@@ -160,6 +199,8 @@ func stripQuotes(s string) string {
 	if start == `"` {
 		s = strings.TrimPrefix(s, `"`)
 		s = strings.TrimSuffix(s, `"`)
+		s = strings.Replace(s, `\"`, `"`, -1)
+		s = strings.Replace(s, `'`, `\'`, -1)
 	} else if start == `'` {
 		s = strings.TrimPrefix(s, `'`)
 		s = strings.TrimSuffix(s, `'`)
@@ -174,7 +215,11 @@ func printBody(indent string, lbracket string, rbracket string, assignment strin
 		//fmt.Sprintf("========")
 		//fmt.Sprintf(reflect.TypeOf(vt))
 		//fmt.Sprintf("========")
-		return fmt.Sprintf("%v << %s", vt.Primary, printBody(""+indent, "[", "]", ":", vt.Append))
+		if vt.Append == nil {
+			return fmt.Sprint(vt.Primary)
+		} else {
+			return fmt.Sprintf("%v << %s", vt.Primary, printBody(""+indent, "[", "]", ":", vt.Append))
+		}
 	case []interface{}:
 		s := ""
 		s = s + fmt.Sprintf("%s\n", lbracket)
@@ -222,6 +267,8 @@ func printBody(indent string, lbracket string, rbracket string, assignment strin
 		} else {
 			return fmt.Sprintf("'%s'", stripQuotes(vt))
 		}
+	case bool:
+		return fmt.Sprint(vt)
 	default:
 		return fmt.Sprintf("%s", reflect.TypeOf(vt))
 	}
