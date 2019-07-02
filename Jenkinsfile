@@ -17,6 +17,7 @@ CICD {
   /* multiline
   comment
   */
+  stepConfig = Constants.NO_DOCKER_IMAGE_NO_SCRATCH_ENV_NO_API_TESTS << [createGithubRelease: false]
   vaultEnvVars = [
     [key: "BRAINTREE_PRIVATE_KEY", path: "kubernetes/scratch/_all/common", field: "braintree-private-key"]
   ]

@@ -33,19 +33,23 @@ func main() {
 
 	jenkinsFile := p.ParseJenkinsFile()
 
-	convertContainerImages(&jenkinsFile)
+	if jenkinsFile.Function == "CICD" {
+		convertContainerImages(&jenkinsFile)
 
-	convertMakeTargets(&jenkinsFile)
-	convertNpmRunTargets(&jenkinsFile)
-	convertRakeTargets(&jenkinsFile)
+		convertMakeTargets(&jenkinsFile)
+		convertNpmRunTargets(&jenkinsFile)
+		convertRakeTargets(&jenkinsFile)
 
-	convertMoveToAll(&jenkinsFile)
+		convertMoveToAll(&jenkinsFile)
 
-	convertStepConfig(&jenkinsFile, "pr", "Constants.PR_VALIDATION_STEPS")
-	convertStepConfig(&jenkinsFile, "promoteToProduction", "Constants.PROMOTION_JOB_STEPS")
-	convertStepConfig(&jenkinsFile, "master", "Constants.MASTER_BRANCH_STEPS")
+		convertStepConfig(&jenkinsFile, "pr", "Constants.PR_VALIDATION_STEPS")
+		convertStepConfig(&jenkinsFile, "promoteToProduction", "Constants.PROMOTION_JOB_STEPS")
+		convertStepConfig(&jenkinsFile, "master", "Constants.MASTER_BRANCH_STEPS")
 
-	delete(jenkinsFile.Values["all"].(map[string]interface{}), "stepConfig")
+		delete(jenkinsFile.Values["all"].(map[string]interface{}), "stepConfig")
+	} else {
+		convertContainerImages(&jenkinsFile)
+	}
 
 	fmt.Println(jenkinsFile.Library)
 	for _, i := range jenkinsFile.Imports {
@@ -77,7 +81,7 @@ func convertStepConfig(js *ast.JenkinsFile, key string, constant string) {
 		js.Values[key].(map[string]interface{})["stepConfig"] = stepConfig
 	} else {
 		if ok {
-			stepConfig.Append = allStepConfig.(string)
+			stepConfig.Append = allStepConfig
 		}
 		js.Values[key] = map[string]interface{}{
 
@@ -212,15 +216,14 @@ func stripQuotes(s string) string {
 func printBody(indent string, lbracket string, rbracket string, assignment string, object interface{}) string {
 	switch vt := object.(type) {
 	case ast.ConcatenatedItem:
-		//fmt.Sprintf("========")
-		//fmt.Sprintf(reflect.TypeOf(vt))
-		//fmt.Sprintf("========")
+		//fmt.Println("ConcatenatedItem")
 		if vt.Append == nil {
 			return fmt.Sprint(vt.Primary)
 		} else {
 			return fmt.Sprintf("%v << %s", vt.Primary, printBody(""+indent, "[", "]", ":", vt.Append))
 		}
 	case []interface{}:
+		//fmt.Println("Slice")
 		s := ""
 		s = s + fmt.Sprintf("%s\n", lbracket)
 		for _, str := range vt {
@@ -233,6 +236,7 @@ func printBody(indent string, lbracket string, rbracket string, assignment strin
 		s = s + fmt.Sprintf("%s%s", strings.TrimPrefix(indent, "  "), rbracket)
 		return s
 	case map[string]interface{}:
+		//fmt.Println("Map")
 		s := ""
 		delimiter := "\n\n"
 		if lbracket == "[" {
@@ -262,12 +266,14 @@ func printBody(indent string, lbracket string, rbracket string, assignment strin
 		s = s + fmt.Sprintf("%s%s", strings.TrimPrefix(indent, "  "), rbracket)
 		return s
 	case string:
+		//fmt.Println("String")
 		if strings.Contains(vt, "Constants") {
 			return fmt.Sprintf("%s", vt)
 		} else {
 			return fmt.Sprintf("'%s'", stripQuotes(vt))
 		}
 	case bool:
+		//fmt.Println("Bool")
 		return fmt.Sprint(vt)
 	default:
 		return fmt.Sprintf("%s", reflect.TypeOf(vt))

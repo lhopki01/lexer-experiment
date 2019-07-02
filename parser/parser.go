@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/davecgh/go-spew/spew"
 	"github.com/lhopki01/lexer-experiment/ast"
 	"github.com/lhopki01/lexer-experiment/lexer"
 	"github.com/lhopki01/lexer-experiment/token"
@@ -73,7 +74,6 @@ func (p *Parser) Parse() interface{} {
 func parseArrayOrObject(p *Parser) interface{} {
 	array := []interface{}{}
 	object := map[string]interface{}{}
-
 	tok := p.Lexer.PeakToken()
 	secondTok := p.Lexer.PeakSecondToken()
 
@@ -123,9 +123,9 @@ func parseArrayOrObject(p *Parser) interface{} {
 				if tok.Type != token.LTHAN {
 					panic(fmt.Sprintf("wat expecting '<' go '%s'", string(tok.Lit)))
 				}
-				object[key] = map[string]interface{}{
-					"value":  object[key],
-					"append": p.Parse(),
+				object[key] = ast.ConcatenatedItem{
+					Primary: object[key],
+					Append:  p.Parse(),
 				}
 				tok = p.Lexer.NewToken()
 			}
@@ -161,12 +161,38 @@ func parseNewlineObject(p *Parser) interface{} {
 		fmt.Println("===newlineobject===")
 		for {
 			key := string(p.Lexer.NewToken().Lit)
-			tok = p.Lexer.NewToken() // ':'
+			tok = p.Lexer.NewToken() // '='
 			if tok.Type != token.EQUAL {
 				panic(fmt.Sprintf("was expecting '=' got %s", string(tok.Lit)))
 			}
 			object[key] = p.Parse()
 			tok = p.Lexer.PeakToken() // ','
+
+			if tok.Type == token.PLUS {
+				fmt.Println("===ConcatenatedItem===")
+				tok = p.Lexer.NewToken()
+				object[key] = ast.ConcatenatedItem{
+					Primary: object[key],
+					Append:  p.Parse(),
+				}
+				tok = p.Lexer.PeakToken()
+
+			}
+
+			if tok.Type == token.LTHAN {
+				fmt.Println("===ConcatenatedItem===")
+				tok = p.Lexer.NewToken()
+				tok = p.Lexer.NewToken()
+				if tok.Type != token.LTHAN {
+					panic(fmt.Sprintf("wat expecting '<' go '%s'", string(tok.Lit)))
+				}
+				object[key] = ast.ConcatenatedItem{
+					Primary: object[key],
+					Append:  p.Parse(),
+				}
+				tok = p.Lexer.PeakToken()
+				spew.Dump(object[key])
+			}
 
 			if tok.Type == token.RBRACE {
 				return object

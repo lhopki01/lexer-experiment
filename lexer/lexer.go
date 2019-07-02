@@ -1,7 +1,6 @@
 package lexer
 
 import (
-	"fmt"
 	"strings"
 	"unicode"
 
@@ -72,13 +71,13 @@ func (l *Lexer) NewToken() token.Token {
 		}
 	}
 
-	fmt.Println(tok.String())
+	//fmt.Println(tok.String())
 	l.readChar()
 	return tok
 }
 
 func (l *Lexer) PeakToken() token.Token {
-	fmt.Print("Peak: ")
+	//fmt.Print("Peak: ")
 	start := l.start
 	end := l.end
 	tok := l.NewToken()
@@ -90,7 +89,7 @@ func (l *Lexer) PeakToken() token.Token {
 }
 
 func (l *Lexer) PeakSecondToken() token.Token {
-	fmt.Print("PeakSecond: ")
+	//fmt.Print("PeakSecond: ")
 	start := l.start
 	end := l.end
 	l.NewToken()
@@ -107,12 +106,12 @@ func isBool(l *Lexer) bool {
 	end := l.end
 
 	l.end += 3
-	fmt.Println(strings.ToLower(string(l.input[l.start:l.end])))
+	//fmt.Println(strings.ToLower(string(l.input[l.start:l.end])))
 	if strings.ToLower(string(l.input[l.start:l.end])) == "true" {
 		return true
 	}
 	l.end += 1
-	fmt.Println(strings.ToLower(string(l.input[l.start:l.end])))
+	//fmt.Println(strings.ToLower(string(l.input[l.start:l.end])))
 	if strings.ToLower(string(l.input[l.start:l.end])) == "false" {
 		return true
 	}
@@ -153,7 +152,7 @@ func isLibrary(l *Lexer) bool {
 }
 
 func isString(l *Lexer) bool {
-	fmt.Println("in isString")
+	//fmt.Println("in isString")
 	if l.char == '"' {
 		for l.end < len(l.input) {
 			l.end += 1
@@ -191,7 +190,7 @@ func isString(l *Lexer) bool {
 			}
 		}
 	}
-	fmt.Println("at the end")
+	//fmt.Println("at the end")
 
 	return false
 }
