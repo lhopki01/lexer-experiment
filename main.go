@@ -42,26 +42,28 @@ func main() {
 
 		convertMoveToAll(&jenkinsFile)
 
-		convertStepConfig(&jenkinsFile, "pr", "Constants.PR_VALIDATION_STEPS")
-		convertStepConfig(&jenkinsFile, "promoteToProduction", "Constants.PROMOTION_JOB_STEPS")
-		convertStepConfig(&jenkinsFile, "master", "Constants.MASTER_BRANCH_STEPS")
+		//convertStepConfig(&jenkinsFile, "pr", "Constants.PR_VALIDATION_STEPS")
+		//convertStepConfig(&jenkinsFile, "promoteToProd", "Constants.PROMOTION_JOB_STEPS")
+		//convertStepConfig(&jenkinsFile, "master", "Constants.MASTER_BRANCH_STEPS")
 
 		delete(jenkinsFile.Values["all"].(map[string]interface{}), "stepConfig")
 	} else {
 		convertContainerImages(&jenkinsFile)
 	}
 
-	fmt.Println(jenkinsFile.Library)
+	oJenkinsFile := fmt.Sprintln(jenkinsFile.Library)
 	for _, i := range jenkinsFile.Imports {
-		fmt.Printf("import %s\n", i)
+		oJenkinsFile += fmt.Sprintf("import %s\n", i)
 	}
-	fmt.Println("")
-	fmt.Printf("%s ", jenkinsFile.Function)
-	reg := regexp.MustCompile(`\[\s*\]`)
-	fmt.Print(reg.ReplaceAllString(
-		printBody("  ", "{", "}", "=", jenkinsFile.Values),
-		"[]",
-	))
+	oJenkinsFile += fmt.Sprintf("\n%s ", jenkinsFile.Function)
+	oJenkinsFile += printBody("  ", "{", "}", "=", jenkinsFile.Values)
+	//reg := regexp.MustCompile(`\[\s*\]`)
+	//fmt.Print(reg.ReplaceAllString(
+	//	printBody("  ", "{", "}", "=", jenkinsFile.Values),
+	//	"[]",
+	//))
+	//fmt.Print(oJenkinsFile)
+	ioutil.WriteFile(absPath, []byte(oJenkinsFile), 0644)
 }
 
 func convertStepConfig(js *ast.JenkinsFile, key string, constant string) {
@@ -92,29 +94,21 @@ func convertStepConfig(js *ast.JenkinsFile, key string, constant string) {
 
 func convertContainerImages(jf *ast.JenkinsFile) {
 	images := map[string]interface{}{}
+	s, ok := jf.Values["containerImages"].(map[string]interface{})
+	if ok {
+		for k, v := range s {
+			images[k] = convertContainerImage(v.(map[string]interface{}))
+		}
+	}
 	re := regexp.MustCompile(`containerImages\[(.*)\]`)
 	for k, v := range jf.Values {
 		matches := re.FindStringSubmatch(k)
 		if matches != nil {
 			//images[matches[1]] = v
 			vm := v.(map[string]interface{})
-			if val, ok := vm["uri"]; ok {
-				_, nameOk := vm["name"]
-				_, tagOk := vm["tag"]
-				if nameOk || tagOk {
-					panic("Can't have name or tag with uri")
-				} else {
-					images[matches[1]] = val
-				}
-			} else {
-				images[matches[1]] = fmt.Sprintf(
-					"eu.gcr.io/karhoo-common/%s:%s",
-					stripQuotes(vm["name"].(string)),
-					stripQuotes(vm["tag"].(string)),
-				)
-			}
 
 			delete(jf.Values, k)
+			images[matches[1]] = convertContainerImage(vm)
 		}
 	}
 	if len(images) > 0 {
@@ -122,10 +116,27 @@ func convertContainerImages(jf *ast.JenkinsFile) {
 	}
 }
 
+func convertContainerImage(vm map[string]interface{}) (image string) {
+	if val, ok := vm["uri"]; ok {
+		_, nameOk := vm["name"]
+		_, tagOk := vm["tag"]
+		if nameOk || tagOk {
+			panic("Can't have name or tag with uri")
+		} else {
+			return val.(string)
+		}
+	}
+	return fmt.Sprintf(
+		"eu.gcr.io/karhoo-common/%s:%s",
+		stripQuotes(vm["name"].(string)),
+		stripQuotes(vm["tag"].(string)),
+	)
+}
+
 func convertMoveToAll(jf *ast.JenkinsFile) {
 	allValues := map[string]interface{}{}
 	for k, v := range jf.Values {
-		if k != "pr" && k != "master" && k != "promoteToProd" {
+		if k != "pr" && k != "master" && k != "promoteToProd" && k != "all" {
 			allValues[k] = v
 			delete(jf.Values, k)
 		}

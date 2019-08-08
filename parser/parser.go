@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/davecgh/go-spew/spew"
 	"github.com/lhopki01/lexer-experiment/ast"
 	"github.com/lhopki01/lexer-experiment/lexer"
 	"github.com/lhopki01/lexer-experiment/token"
@@ -48,7 +47,7 @@ func (p *Parser) ParseJenkinsFile() ast.JenkinsFile {
 
 func (p *Parser) Parse() interface{} {
 	tok := p.Lexer.NewToken()
-	fmt.Println(tok.String())
+	//fmt.Println(tok.String())
 	switch tok.Type {
 	case token.STRING:
 		return string(tok.Lit)
@@ -81,7 +80,7 @@ func parseArrayOrObject(p *Parser) interface{} {
 		p.Lexer.NewToken()
 		return array
 	} else if secondTok.Type != token.COLON {
-		fmt.Println("===array===")
+		//fmt.Println("===array===")
 		for {
 			array = append(array, p.Parse())
 			tok = p.Lexer.NewToken()
@@ -100,7 +99,7 @@ func parseArrayOrObject(p *Parser) interface{} {
 			}
 		}
 	} else {
-		fmt.Println("===object===")
+		//fmt.Println("===object===")
 		for {
 			key := string(p.Lexer.NewToken().Lit)
 			tok = p.Lexer.NewToken() // ':'
@@ -158,7 +157,7 @@ func parseNewlineObject(p *Parser) interface{} {
 		p.Lexer.NewToken()
 		return array
 	} else {
-		fmt.Println("===newlineobject===")
+		//fmt.Println("===newlineobject===")
 		for {
 			key := string(p.Lexer.NewToken().Lit)
 			tok = p.Lexer.NewToken() // '='
@@ -169,7 +168,7 @@ func parseNewlineObject(p *Parser) interface{} {
 			tok = p.Lexer.PeakToken() // ','
 
 			if tok.Type == token.PLUS {
-				fmt.Println("===ConcatenatedItem===")
+				//fmt.Println("===ConcatenatedItem===")
 				tok = p.Lexer.NewToken()
 				object[key] = ast.ConcatenatedItem{
 					Primary: object[key],
@@ -180,7 +179,7 @@ func parseNewlineObject(p *Parser) interface{} {
 			}
 
 			if tok.Type == token.LTHAN {
-				fmt.Println("===ConcatenatedItem===")
+				//fmt.Println("===ConcatenatedItem===")
 				tok = p.Lexer.NewToken()
 				tok = p.Lexer.NewToken()
 				if tok.Type != token.LTHAN {
@@ -191,7 +190,6 @@ func parseNewlineObject(p *Parser) interface{} {
 					Append:  p.Parse(),
 				}
 				tok = p.Lexer.PeakToken()
-				spew.Dump(object[key])
 			}
 
 			if tok.Type == token.RBRACE {

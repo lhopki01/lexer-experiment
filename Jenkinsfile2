@@ -8,6 +8,7 @@ CICD {
       tag: "edge",
     ]
   ]
+  containerImages["envy"] = [name:"karhoo-golang-mysql",tag:"0.6.5"]
   helmCharts = []
   makeTargets = [
     "lint",
